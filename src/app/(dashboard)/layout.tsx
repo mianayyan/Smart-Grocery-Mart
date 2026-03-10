@@ -6,11 +6,11 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useFestivalStore } from '@/store/festival';
 import { useStoreConfig } from '@/store/storeConfig';
-import { isDevMode, APP_VERSION } from '@/lib/plugins';
+import { APP_VERSION } from '@/lib/plugins';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, BarChart3,
   Megaphone, Truck, Settings, LogOut, Menu, X, CreditCard,
-  Receipt, Camera, Moon, Sun, Sparkles, Terminal, UserCog, Award,
+  Receipt, Camera, Moon, Sun, Sparkles, UserCog, Award,
   FileText, Bell
 } from 'lucide-react';
 
@@ -37,12 +37,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const supabase = createClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [devMode, setDevMode] = useState(false);
   const { currentFestival, festivalEnabled, theme, darkMode, toggleDarkMode, toggleFestival } = useFestivalStore();
   const storeConfig = useStoreConfig();
 
   useEffect(() => {
-    setDevMode(isDevMode());
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
@@ -67,17 +65,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   }
 
-  const allNavItems = devMode
-    ? [...navItems, { name: 'Dev Panel', href: '/dev-panel', icon: Terminal }]
-    : navItems;
-
   function getNavClass(href: string, isActive: boolean) {
     if (isActive) {
       if (currentFestival && festivalEnabled && theme) return `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`;
-      if (href === '/dev-panel') return 'bg-gray-900 text-green-400 shadow-lg';
       return 'bg-blue-600 text-white shadow-lg shadow-blue-200';
     }
-    if (href === '/dev-panel') return darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100';
     return darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
   }
 
@@ -92,11 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {currentFestival && festivalEnabled && theme ? (
-                <span className="text-2xl">{theme.emoji}</span>
-              ) : (
-                <span className="text-2xl">🛒</span>
-              )}
+              {currentFestival && festivalEnabled && theme ? <span className="text-2xl">{theme.emoji}</span> : <span className="text-2xl">🛒</span>}
               <div>
                 <h1 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{storeConfig.storeName}</h1>
                 <p className="text-xs text-gray-500">Smart Grocery Mart</p>
@@ -112,15 +100,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {allNavItems.map(item => {
+          {navItems.map(item => {
             const isActive = pathname === item.href;
             return (
-              <Link key={item.href} href={item.href}
-                onClick={() => setSidebarOpen(false)}
+              <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${getNavClass(item.href, isActive)}`}>
-                <item.icon size={18}/>
-                {item.name}
-                {item.href === '/dev-panel' && <span className="ml-auto text-xs bg-green-600 text-white px-1.5 py-0.5 rounded">DEV</span>}
+                <item.icon size={18}/>{item.name}
               </Link>
             );
           })}
@@ -129,14 +114,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className={`p-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} space-y-1`}>
           <button onClick={toggleDarkMode}
             className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
-            {darkMode ? <Sun size={18}/> : <Moon size={18}/>}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
+            {darkMode ? <Sun size={18}/> : <Moon size={18}/>}{darkMode ? 'Light Mode' : 'Dark Mode'}
           </button>
           {currentFestival && (
             <button onClick={toggleFestival}
               className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
-              <Sparkles size={18}/>
-              {festivalEnabled ? 'Disable' : 'Enable'} Festival
+              <Sparkles size={18}/>{festivalEnabled ? 'Disable' : 'Enable'} Festival
             </button>
           )}
           <button onClick={handleLogout}
@@ -155,13 +138,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className={`sticky top-0 z-30 px-4 py-3 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} lg:hidden flex items-center justify-between`}>
           <button onClick={() => setSidebarOpen(true)}><Menu size={24} className={darkMode ? 'text-white' : 'text-gray-900'}/></button>
           <span className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{storeConfig.storeName}</span>
-          <button onClick={() => router.push('/dev-panel')} className="opacity-0 w-8 h-8 active:opacity-100" aria-label="dev">
-            <Terminal size={14}/>
-          </button>
+          <div className="w-6"/>
         </header>
-        <div className="flex-1 overflow-auto">
-          {children}
-        </div>
+        <div className="flex-1 overflow-auto">{children}</div>
       </main>
     </div>
   );
