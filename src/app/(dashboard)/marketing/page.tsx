@@ -2,146 +2,171 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { createWhatsAppLink } from '@/lib/utils';
-import { t } from '@/i18n';
+import { useStoreConfig } from '@/store/storeConfig';
 import { Customer } from '@/types';
 import { toast } from 'sonner';
-import { Send, MessageSquare, Users, Sparkles } from 'lucide-react';
+import { Send, MessageSquare, Users, Filter, Sparkles, Phone } from 'lucide-react';
 
 export default function MarketingPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [segment, setSegment] = useState('all');
-  const [message, setMessage] = useState('');
-  const [campaignName, setCampaignName] = useState('');
-  const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const storeConfig = useStoreConfig();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSegment, setSelectedSegment] = useState('all');
+  const [message, setMessage] = useState('');
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
 
-  useEffect(() => { fetchCustomers(); }, []);
+  useEffect(() => {
+    storeConfig.loadConfig();
+    fetchCustomers();
+  }, []);
 
-  const fetchCustomers = async () => {
-    const { data } = await supabase.from('customers').select('*').order('name');
+  async function fetchCustomers() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('customers').select('*').eq('user_id', user.id).order('name');
     setCustomers(data || []);
     setLoading(false);
-  };
-
-  const filteredCustomers = segment === 'all' ? customers : customers.filter(c => c.segment === segment);
+  }
 
   const quickTemplates = [
-    { label: 'Festival Offer', emoji: '🎉', text: 'Assalam o Alaikum! 🎉\n\nSpecial festival offer at Smart Grocery Mart!\n\n🛒 Get 20% OFF on all items\n📅 Limited time offer\n\nVisit us today!\n\nSmart Grocery Mart' },
-    { label: 'New Arrivals', emoji: '🆕', text: 'Assalam o Alaikum! 🆕\n\nNew products just arrived at Smart Grocery Mart!\n\n✨ Fresh stock available\n💰 Best prices guaranteed\n\nCome check them out!\n\nSmart Grocery Mart' },
-    { label: 'Thank You', emoji: '🙏', text: 'Assalam o Alaikum! 🙏\n\nThank you for being a valued customer of Smart Grocery Mart!\n\n🎁 Special discount on your next visit\n💝 We appreciate your support\n\nSee you soon!\n\nSmart Grocery Mart' },
-    { label: 'Ramadan Special', emoji: '🌙', text: 'Ramadan Mubarak! 🌙\n\nSpecial Ramadan offers at Smart Grocery Mart!\n\n🛒 Dates, juices, and more at special prices\n📦 Free delivery on orders above Rs. 2000\n\nSmart Grocery Mart' },
+    {
+      name: 'Welcome Offer',
+      message: `Welcome to ${storeConfig.storeName}! Get 10% off on your first purchase. Visit us today! ${storeConfig.storePhone ? 'Call: ' + storeConfig.storePhone : ''}`
+    },
+    {
+      name: 'Weekend Sale',
+      message: `Weekend Special at ${storeConfig.storeName}! Enjoy amazing discounts on all products this weekend. Don't miss out! ${storeConfig.storeAddress ? 'Visit: ' + storeConfig.storeAddress : ''}`
+    },
+    {
+      name: 'New Arrivals',
+      message: `New products just arrived at ${storeConfig.storeName}! Come check out our latest collection of fresh groceries and daily essentials.`
+    },
+    {
+      name: 'Festival Offer',
+      message: `Festival Special from ${storeConfig.storeName}! Celebrate with us and enjoy special discounts on all items. Wishing you a happy season!`
+    },
+    {
+      name: 'Payment Reminder',
+      message: `Dear Customer, this is a friendly reminder from ${storeConfig.storeName} regarding your pending balance. Please visit us to settle your account. Thank you!`
+    },
+    {
+      name: 'Loyalty Thanks',
+      message: `Thank you for being a valued customer of ${storeConfig.storeName}! As a token of our appreciation, enjoy a special discount on your next visit.`
+    },
   ];
 
-  const handleSendBulk = async () => {
-    if (!message) { toast.error('Please write a message'); return; }
-    if (filteredCustomers.length === 0) { toast.error('No customers in this segment'); return; }
+  function sendWhatsApp(phone: string, msg: string) {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
 
-    // Save campaign
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('campaigns').insert({
-        user_id: user.id,
-        name: campaignName || 'Quick Campaign',
-        message_template: message,
-        campaign_type: 'custom',
-        target_segment: segment,
-        status: 'sent',
-        sent_count: filteredCustomers.length,
-      });
-    }
-
-    // Open WhatsApp links
-    filteredCustomers.forEach((customer, index) => {
-      setTimeout(() => {
-        const personalMessage = message.replace('{name}', customer.name);
-        window.open(createWhatsAppLink(customer.phone, personalMessage), '_blank');
-      }, index * 1500);
+  function sendToSelected() {
+    if (!message) { toast.error('Please enter a message'); return; }
+    if (selectedCustomers.length === 0) { toast.error('Please select at least one customer'); return; }
+    selectedCustomers.forEach(id => {
+      const customer = customers.find(c => c.id === id);
+      if (customer?.phone) {
+        sendWhatsApp(customer.phone, message);
+      }
     });
+    toast.success(`Sending to ${selectedCustomers.length} customers via WhatsApp`);
+  }
 
-    toast.success(`Sending to ${filteredCustomers.length} customers via WhatsApp!`);
-  };
+  function toggleCustomer(id: string) {
+    setSelectedCustomers(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  }
 
-  const handleSendSingle = (customer: Customer) => {
-    if (!message) { toast.error('Please write a message first'); return; }
-    const personalMessage = message.replace('{name}', customer.name);
-    window.open(createWhatsAppLink(customer.phone, personalMessage), '_blank');
-  };
+  function selectAll() {
+    const filtered = getFilteredCustomers();
+    if (selectedCustomers.length === filtered.length) {
+      setSelectedCustomers([]);
+    } else {
+      setSelectedCustomers(filtered.map(c => c.id));
+    }
+  }
+
+  function getFilteredCustomers() {
+    if (selectedSegment === 'all') return customers;
+    return customers.filter(c => c.segment === selectedSegment);
+  }
+
+  const filteredCustomers = getFilteredCustomers();
+
+  if (loading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold dark:text-white">{t('marketing.title')}</h1>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Marketing</h1>
+        <p className="text-gray-500">Send promotional messages to customers via WhatsApp</p>
+      </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Message Builder */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 dark:text-white flex items-center gap-2">
-            <MessageSquare size={20} /> Message Builder
-          </h3>
-
-          <input type="text" placeholder="Campaign Name (optional)" value={campaignName} onChange={(e) => setCampaignName(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg mb-3 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-
-          <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6}
-            placeholder="Write your message here... Use {name} for customer name"
-            className="w-full px-3 py-2 border rounded-lg mb-3 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-
-          <p className="text-xs text-gray-500 mb-3">Tip: Use {'{name}'} to personalize with customer name</p>
-
-          {/* Quick Templates */}
-          <div className="mb-4">
-            <p className="text-sm font-medium mb-2 dark:text-gray-300">Quick Templates:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {quickTemplates.map((tmpl) => (
-                <button key={tmpl.label} onClick={() => setMessage(tmpl.text)}
-                  className="text-left p-2 border rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-300">
-                  {tmpl.emoji} {tmpl.label}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+            <h2 className="font-semibold dark:text-white mb-3 flex items-center gap-2"><Sparkles size={18}/>Quick Templates</h2>
+            <p className="text-xs text-blue-600 mb-3">Templates automatically use your store name: <strong>{storeConfig.storeName}</strong></p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {quickTemplates.map(t => (
+                <button key={t.name} onClick={() => setMessage(t.message)}
+                  className="p-3 border dark:border-gray-700 rounded-lg text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                  <p className="font-medium text-sm dark:text-white">{t.name}</p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{t.message}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Segment Filter */}
-          <div className="mb-4">
-            <p className="text-sm font-medium mb-2 dark:text-gray-300">Target Segment:</p>
-            <div className="flex flex-wrap gap-2">
-              {['all', 'regular', 'vip', 'wholesale', 'new'].map((s) => (
-                <button key={s} onClick={() => setSegment(s)}
-                  className={`px-3 py-1.5 rounded-lg text-sm capitalize ${segment === s ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-300'}`}>
-                  {s} ({s === 'all' ? customers.length : customers.filter(c => c.segment === s).length})
-                </button>
-              ))}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+            <h2 className="font-semibold dark:text-white mb-3 flex items-center gap-2"><MessageSquare size={18}/>Message</h2>
+            <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4}
+              placeholder="Type your marketing message here..."
+              className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-xs text-gray-500">{message.length} characters</span>
+              <button onClick={sendToSelected}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700">
+                <Send size={16}/>Send to Selected ({selectedCustomers.length})
+              </button>
             </div>
           </div>
-
-          <button onClick={handleSendBulk}
-            className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2">
-            <Send size={20} /> Send to {filteredCustomers.length} Customers
-          </button>
         </div>
 
-        {/* Customer List */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 dark:text-white flex items-center gap-2">
-            <Users size={20} /> Customers ({filteredCustomers.length})
-          </h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 h-fit">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold dark:text-white flex items-center gap-2"><Users size={18}/>Customers</h2>
+            <button onClick={selectAll} className="text-xs text-blue-600 hover:underline">
+              {selectedCustomers.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
 
-          <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {loading ? (
-              <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
-            ) : filteredCustomers.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No customers found</p>
+          <div className="mb-3">
+            <select value={selectedSegment} onChange={e => setSelectedSegment(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <option value="all">All Customers ({customers.length})</option>
+              <option value="regular">Regular</option>
+              <option value="vip">VIP</option>
+              <option value="wholesale">Wholesale</option>
+              <option value="new">New</option>
+            </select>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto space-y-2">
+            {filteredCustomers.length === 0 ? (
+              <p className="text-center text-gray-500 py-4 text-sm">No customers found</p>
             ) : (
-              filteredCustomers.map((customer) => (
-                <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm dark:text-white">{customer.name}</p>
-                    <p className="text-xs text-gray-500">{customer.phone}</p>
+              filteredCustomers.map(c => (
+                <div key={c.id} onClick={() => toggleCustomer(c.id)}
+                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer ${selectedCustomers.includes(c.id) ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'hover:bg-gray-50 dark:hover:bg-gray-750'}`}>
+                  <input type="checkbox" checked={selectedCustomers.includes(c.id)} readOnly className="rounded"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm dark:text-white truncate">{c.name}</p>
+                    <p className="text-xs text-gray-500 flex items-center gap-1"><Phone size={10}/>{c.phone}</p>
                   </div>
-                  <button onClick={() => handleSendSingle(customer)}
-                    className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">
-                    <Send size={16} />
-                  </button>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${c.segment === 'vip' ? 'bg-purple-100 text-purple-700' : c.segment === 'wholesale' ? 'bg-blue-100 text-blue-700' : c.segment === 'new' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {c.segment}
+                  </span>
                 </div>
               ))
             )}

@@ -20,7 +20,7 @@ const navItems = [
   { name: 'Scanner', href: '/scanner', icon: Camera },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Customers', href: '/customers', icon: Users },
-  { name: 'Khata / Credit', href: '/khata', icon: CreditCard },
+  { name: 'Credit Book', href: '/khata', icon: CreditCard },
   { name: 'Expenses', href: '/expenses', icon: Receipt },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Marketing', href: '/marketing', icon: Megaphone },
@@ -40,13 +40,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     setDevMode(isDevMode());
     storeConfig.loadConfig();
-
     async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) router.push('/login');
     }
     checkAuth();
-
     function handleKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
@@ -91,7 +89,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={20}/></button>
           </div>
-
           {currentFestival && festivalEnabled && theme && (
             <div className={`mt-2 px-2 py-1 rounded-lg text-xs text-center bg-gradient-to-r ${theme.gradient} text-white`}>
               {theme.emoji} {theme.name} Mubarak! {theme.emoji}
@@ -109,10 +106,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ${isActive
                   ? (currentFestival && festivalEnabled && theme
                     ? `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`
-                    : item.href === '/dev-panel' ? 'bg-gray-900 text-green-400 shadow-lg' : 'bg-blue-600 text-white shadow-lg')
+                    : item.href === '/dev-panel'
+                      ? 'bg-gray-900 text-green-400 shadow-lg'
+                      : 'bg-blue-600 text-white shadow-lg shadow-blue-200')
                   : (item.href === '/dev-panel'
                     ? (darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100')
-                    : (darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'))
+                    : (darkMode
+                      ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'))
                 }`}>
                 <item.icon size={18}/>
                 {item.name}
@@ -124,13 +125,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <div className={`p-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} space-y-1`}>
           <button onClick={toggleDarkMode}
-            className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+            className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
             {darkMode ? <Sun size={18}/> : <Moon size={18}/>}
             {darkMode ? 'Light Mode' : 'Dark Mode'}
           </button>
           {currentFestival && (
             <button onClick={toggleFestival}
-              className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+              className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
               <Sparkles size={18}/>
               {festivalEnabled ? 'Disable' : 'Enable'} Festival
             </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { enableDevMode, disableDevMode, isDevMode, getPlugins, savePlugins, Plugin, APP_VERSION, DEV_ACCESS_KEY } from '@/lib/plugins';
+import { enableDevMode, disableDevMode, isDevMode, getPlugins, savePlugins, Plugin, APP_VERSION } from '@/lib/plugins';
 import { toast } from 'sonner';
 import { Shield, ShieldOff, Puzzle, RefreshCw, Terminal, Globe, GitBranch, Cpu, Database, ToggleLeft, ToggleRight, Lock, Unlock, Settings, Zap, Code, Eye, EyeOff, Rocket } from 'lucide-react';
 
@@ -9,10 +9,8 @@ export default function DevPanelPage() {
   const [devMode, setDevMode] = useState(false);
   const [accessKey, setAccessKey] = useState('');
   const [plugins, setPlugins] = useState<Plugin[]>([]);
-  const [showSystem, setShowSystem] = useState(false);
   const [customCSS, setCustomCSS] = useState('');
   const [customJS, setCustomJS] = useState('');
-  const [showCode, setShowCode] = useState(false);
   const [activeTab, setActiveTab] = useState<'plugins' | 'system' | 'tools' | 'deploy'>('plugins');
 
   useEffect(() => {
@@ -29,6 +27,7 @@ export default function DevPanelPage() {
     } else {
       toast.error('Invalid access key!');
     }
+    setAccessKey('');
   }
 
   function handleLogout() {
@@ -69,7 +68,6 @@ export default function DevPanelPage() {
     pos: '#3B82F6', inventory: '#10B981', customers: '#8B5CF6',
     analytics: '#F59E0B', marketing: '#EC4899', system: '#EF4444', ui: '#06B6D4'
   };
-
   const categoryIcons: Record<string, string> = {
     pos: '🛒', inventory: '📦', customers: '👥',
     analytics: '📊', marketing: '📣', system: '⚙️', ui: '🎨'
@@ -105,10 +103,8 @@ export default function DevPanelPage() {
           <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Developer Panel</h1>
             <p className="text-gray-500 text-sm">v{APP_VERSION} | Smart Grocery Mart</p></div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 text-sm">
-            <ShieldOff size={16}/>Exit Dev Mode</button>
-        </div>
+        <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 text-sm">
+          <ShieldOff size={16}/>Exit Dev Mode</button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -130,10 +126,6 @@ export default function DevPanelPage() {
         {(['plugins', 'system', 'tools', 'deploy'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-700'}`}>
-            {tab === 'plugins' && <Puzzle size={16} className="inline mr-1"/>}
-            {tab === 'system' && <Settings size={16} className="inline mr-1"/>}
-            {tab === 'tools' && <Code size={16} className="inline mr-1"/>}
-            {tab === 'deploy' && <Rocket size={16} className="inline mr-1"/>}
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
@@ -177,7 +169,7 @@ export default function DevPanelPage() {
               <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">Framework</p><p className="font-medium dark:text-white">Next.js 14</p></div>
               <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">Database</p><p className="font-medium dark:text-white">Supabase (PostgreSQL)</p></div>
               <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">Hosting</p><p className="font-medium dark:text-white">Vercel</p></div>
-              <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">State Management</p><p className="font-medium dark:text-white">Zustand</p></div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">State</p><p className="font-medium dark:text-white">Zustand</p></div>
               <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">Styling</p><p className="font-medium dark:text-white">Tailwind CSS</p></div>
               <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">Auth</p><p className="font-medium dark:text-white">Supabase Auth</p></div>
             </div>
@@ -217,9 +209,6 @@ export default function DevPanelPage() {
                 <a href="https://github.com/mianayyan/Smart-Grocery-Mart" target="_blank" className="font-medium text-blue-600 hover:underline">mianayyan/Smart-Grocery-Mart</a></div>
               <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">Live URL</p>
                 <a href="https://smart-grocery-mart.vercel.app" target="_blank" className="font-medium text-blue-600 hover:underline">smart-grocery-mart.vercel.app</a></div>
-              <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"><p className="text-gray-500">How to Update</p>
-                <p className="font-medium dark:text-white">Terminal: git add . → git commit -m "msg" → git push</p>
-                <p className="text-xs text-gray-500 mt-1">Vercel will auto-build and deploy in 1-2 minutes</p></div>
             </div>
           </div>
         </div>
