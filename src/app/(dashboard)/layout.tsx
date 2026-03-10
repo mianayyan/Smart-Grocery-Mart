@@ -1,166 +1,160 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useFestivalStore } from '@/store/festival';
-import { t } from '@/i18n';
+import { isDevMode } from '@/lib/plugins';
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Users,
-  BarChart3,
-  MessageSquare,
-  Truck,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  Moon,
-  Sun,
+  LayoutDashboard, ShoppingCart, Package, Users, BarChart3,
+  Megaphone, Truck, Settings, LogOut, Menu, X, CreditCard,
+  Receipt, Camera, Moon, Sun, Sparkles, Terminal
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'nav.dashboard' },
-  { href: '/pos', icon: ShoppingCart, label: 'nav.pos' },
-  { href: '/inventory', icon: Package, label: 'nav.inventory' },
-  { href: '/customers', icon: Users, label: 'nav.customers' },
-  { href: '/analytics', icon: BarChart3, label: 'nav.analytics' },
-  { href: '/marketing', icon: MessageSquare, label: 'nav.marketing' },
-  { href: '/suppliers', icon: Truck, label: 'nav.suppliers' },
-  { href: '/settings', icon: Settings, label: 'nav.settings' },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'POS / Sale', href: '/pos', icon: ShoppingCart },
+  { name: 'Scanner', href: '/scanner', icon: Camera },
+  { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Customers', href: '/customers', icon: Users },
+  { name: 'Khata / Credit', href: '/khata', icon: CreditCard },
+  { name: 'Expenses', href: '/expenses', icon: Receipt },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Marketing', href: '/marketing', icon: Megaphone },
+  { name: 'Suppliers', href: '/suppliers', icon: Truck },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
-  const { darkMode, toggleDarkMode, currentFestival, theme, festivalEnabled } =
-    useFestivalStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [devMode, setDevMode] = useState(false);
+  const [showDevAccess, setShowDevAccess] = useState(false);
+  const { currentFestival, festivalEnabled, theme, darkMode, toggleDarkMode, toggleFestival } = useFestivalStore();
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    setDevMode(isDevMode());
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push('/login'); return; }
+      const { data: profile } = await supabase.from('profiles').select('store_name').eq('id', user.id).single();
+      setUserName(profile?.store_name || user.email || 'Store');
     }
-  }, [darkMode]);
+    getUser();
 
-  const handleLogout = async () => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        router.push('/dev-panel');
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  async function handleLogout() {
     await supabase.auth.signOut();
     router.push('/login');
-    router.refresh();
-  };
+  }
+
+  const allNavItems = devMode
+    ? [...navItems, { name: 'Dev Panel', href: '/dev-panel', icon: Terminal }]
+    : navItems;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Festival Banner */}
-      {currentFestival && festivalEnabled && theme && (
-        <div
-          className={`bg-gradient-to-r ${theme.gradient} text-white text-center py-2 px-4 text-sm font-medium animate-festival-glow`}
-        >
-          {theme.emoji} {t(`festivals.${currentFestival}`)} {theme.emoji}
-        </div>
-      )}
+    <div className={`min-h-screen flex ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}/>}
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
+        ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-r flex flex-col`}>
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-200 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
-      >
-        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🛒</span>
-            <span className="font-bold text-lg dark:text-white">
-              GroceryMart
-            </span>
+        <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {currentFestival && festivalEnabled && theme ? (
+                <span className="text-2xl">{theme.emoji}</span>
+              ) : (
+                <span className="text-2xl">🛒</span>
+              )}
+              <div>
+                <h1 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{userName}</h1>
+                <p className="text-xs text-gray-500">Smart Grocery Mart</p>
+              </div>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={20}/></button>
           </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-500"
-          >
-            <X size={20} />
-          </button>
+
+          {currentFestival && festivalEnabled && theme && (
+            <div className={`mt-2 px-2 py-1 rounded-lg text-xs text-center bg-gradient-to-r ${theme.gradient} text-white`}>
+              {theme.emoji} {theme.name} Mubarak! {theme.emoji}
+            </div>
+          )}
         </div>
 
-        <nav className="p-4 space-y-1">
-          {navItems.map((item) => {
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {allNavItems.map(item => {
             const isActive = pathname === item.href;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
+              <Link key={item.href} href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-              >
-                <item.icon size={20} />
-                {t(item.label)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                ${isActive
+                  ? (currentFestival && festivalEnabled && theme
+                    ? `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`
+                    : item.href === '/dev-panel' ? 'bg-gray-900 text-green-400 shadow-lg' : 'bg-blue-600 text-white shadow-lg')
+                  : (item.href === '/dev-panel'
+                    ? (darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100')
+                    : (darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'))
+                }`}>
+                <item.icon size={18}/>
+                {item.name}
+                {item.href === '/dev-panel' && <span className="ml-auto text-xs bg-green-600 text-white px-1.5 py-0.5 rounded">DEV</span>}
               </Link>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 w-full"
-          >
-            <LogOut size={20} />
-            {t('nav.logout')}
+        <div className={`p-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} space-y-1`}>
+          <button onClick={toggleDarkMode}
+            className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+            {darkMode ? <Sun size={18}/> : <Moon size={18}/>}
+            {darkMode ? 'Light Mode' : 'Dark Mode'}
           </button>
+          {currentFestival && (
+            <button onClick={toggleFestival}
+              className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <Sparkles size={18}/>
+              {festivalEnabled ? 'Disable' : 'Enable'} Festival
+            </button>
+          )}
+          <button onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+            <LogOut size={18}/>Logout
+          </button>
+        </div>
+
+        <div className={`px-4 py-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <p className="text-[10px] text-gray-400 text-center">Developed by <span className="font-semibold text-blue-500">Mian Fahad</span></p>
+          <p className="text-[10px] text-gray-400 text-center">v2.0.0</p>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="lg:ml-64">
-        {/* Header */}
-        <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-          <div className="flex items-center justify-between px-4 py-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-gray-600 dark:text-gray-300"
-            >
-              <Menu size={24} />
-            </button>
-
-            <h2 className="text-lg font-semibold dark:text-white hidden lg:block">
-              Smart Grocery Mart
-            </h2>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={toggleDarkMode}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-              >
-                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-            </div>
-          </div>
+      <main className="flex-1 flex flex-col min-h-screen">
+        <header className={`sticky top-0 z-30 px-4 py-3 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} lg:hidden flex items-center justify-between`}>
+          <button onClick={() => setSidebarOpen(true)}><Menu size={24} className={darkMode ? 'text-white' : 'text-gray-900'}/></button>
+          <button onClick={() => router.push('/dev-panel')} className="opacity-0 w-8 h-8 active:opacity-100" aria-label="dev">
+            <Terminal size={14}/>
+          </button>
         </header>
-
-        {/* Page content */}
-        <main className="p-4 md:p-6">{children}</main>
-      </div>
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
