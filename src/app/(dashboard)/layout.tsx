@@ -6,12 +6,12 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useFestivalStore } from '@/store/festival';
 import { useStoreConfig } from '@/store/storeConfig';
-import { isDevMode } from '@/lib/plugins';
-import { APP_VERSION } from '@/lib/plugins';
+import { isDevMode, APP_VERSION } from '@/lib/plugins';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, BarChart3,
   Megaphone, Truck, Settings, LogOut, Menu, X, CreditCard,
-  Receipt, Camera, Moon, Sun, Sparkles, Terminal, UserCog
+  Receipt, Camera, Moon, Sun, Sparkles, Terminal, UserCog, Award,
+  FileText, Bell
 } from 'lucide-react';
 
 const navItems = [
@@ -20,9 +20,12 @@ const navItems = [
   { name: 'Scanner', href: '/scanner', icon: Camera },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Customers', href: '/customers', icon: Users },
+  { name: 'Loyalty Program', href: '/loyalty', icon: Award },
   { name: 'Credit Book', href: '/khata', icon: CreditCard },
   { name: 'Expenses', href: '/expenses', icon: Receipt },
   { name: 'Employees', href: '/employees', icon: UserCog },
+  { name: 'Reports', href: '/reports', icon: FileText },
+  { name: 'Alerts', href: '/alerts', icon: Bell },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Marketing', href: '/marketing', icon: Megaphone },
   { name: 'Suppliers', href: '/suppliers', icon: Truck },
@@ -40,20 +43,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     setDevMode(isDevMode());
-    storeConfig.loadConfig();
-    async function checkAuth() {
+    async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/login');
+      if (!user) { router.push('/login'); return; }
+      storeConfig.loadConfig();
     }
-    checkAuth();
-    function handleKeyDown(e: KeyboardEvent) {
+    getUser();
+  }, []);
+
+  useEffect(() => {
+    const handleDevMode = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         router.push('/dev-panel');
       }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    };
+    window.addEventListener('keydown', handleDevMode);
+    return () => window.removeEventListener('keydown', handleDevMode);
   }, []);
 
   async function handleLogout() {
@@ -67,20 +73,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   function getNavClass(href: string, isActive: boolean) {
     if (isActive) {
-      if (currentFestival && festivalEnabled && theme) {
-        return `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`;
-      }
-      if (href === '/dev-panel') {
-        return 'bg-gray-900 text-green-400 shadow-lg';
-      }
-      return 'bg-blue-600 text-white shadow-lg';
+      if (currentFestival && festivalEnabled && theme) return `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`;
+      if (href === '/dev-panel') return 'bg-gray-900 text-green-400 shadow-lg';
+      return 'bg-blue-600 text-white shadow-lg shadow-blue-200';
     }
-    if (href === '/dev-panel') {
-      return darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 hover:bg-green-50';
-    }
-    return darkMode
-      ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
+    if (href === '/dev-panel') return darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100';
+    return darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
   }
 
   return (
@@ -100,13 +98,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span className="text-2xl">🛒</span>
               )}
               <div>
-                <h1 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {storeConfig.storeName}
-                </h1>
-                <p className="text-xs text-gray-500">{storeConfig.storeTagline}</p>
+                <h1 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{storeConfig.storeName}</h1>
+                <p className="text-xs text-gray-500">Smart Grocery Mart</p>
               </div>
             </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={20}/></button>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={20} className={darkMode ? 'text-white' : 'text-gray-900'}/></button>
           </div>
           {currentFestival && festivalEnabled && theme && (
             <div className={`mt-2 px-2 py-1 rounded-lg text-xs text-center bg-gradient-to-r ${theme.gradient} text-white`}>
