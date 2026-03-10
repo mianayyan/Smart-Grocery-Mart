@@ -11,7 +11,7 @@ import { APP_VERSION } from '@/lib/plugins';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, BarChart3,
   Megaphone, Truck, Settings, LogOut, Menu, X, CreditCard,
-  Receipt, Camera, Moon, Sun, Sparkles, Terminal
+  Receipt, Camera, Moon, Sun, Sparkles, Terminal, UserCog
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +22,7 @@ const navItems = [
   { name: 'Customers', href: '/customers', icon: Users },
   { name: 'Credit Book', href: '/khata', icon: CreditCard },
   { name: 'Expenses', href: '/expenses', icon: Receipt },
+  { name: 'Employees', href: '/employees', icon: UserCog },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Marketing', href: '/marketing', icon: Megaphone },
   { name: 'Suppliers', href: '/suppliers', icon: Truck },
@@ -64,6 +65,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ? [...navItems, { name: 'Dev Panel', href: '/dev-panel', icon: Terminal }]
     : navItems;
 
+  function getNavClass(href: string, isActive: boolean) {
+    if (isActive) {
+      if (currentFestival && festivalEnabled && theme) {
+        return `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`;
+      }
+      if (href === '/dev-panel') {
+        return 'bg-gray-900 text-green-400 shadow-lg';
+      }
+      return 'bg-blue-600 text-white shadow-lg';
+    }
+    if (href === '/dev-panel') {
+      return darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-green-700 hover:bg-green-50';
+    }
+    return darkMode
+      ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
+  }
+
   return (
     <div className={`min-h-screen flex ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}/>}
@@ -102,19 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return (
               <Link key={item.href} href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                ${isActive
-                  ? (currentFestival && festivalEnabled && theme
-                    ? `bg-gradient-to-r ${theme.gradient} text-white shadow-lg`
-                    : item.href === '/dev-panel'
-                      ? 'bg-gray-900 text-green-400 shadow-lg'
-                      : 'bg-blue-600 text-white shadow-lg shadow-blue-200')
-                  : (item.href === '/dev-panel'
-                    ? (darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100')
-                    : (darkMode
-                      ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'))
-                }`}>
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${getNavClass(item.href, isActive)}`}>
                 <item.icon size={18}/>
                 {item.name}
                 {item.href === '/dev-panel' && <span className="ml-auto text-xs bg-green-600 text-white px-1.5 py-0.5 rounded">DEV</span>}
