@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Search, Trash2, Receipt, TrendingDown, Calendar } from 'lucide-react';
 
@@ -52,19 +51,19 @@ export default function ExpensesPage() {
   }
 
   async function addExpense() {
-    if (!form.amount) { toast.error('Amount daalo'); return; }
+    if (!form.amount) { toast.error('Please enter amount'); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase.from('expenses').insert({ user_id: user.id, category: form.category, amount: Number(form.amount), description: form.description, date: form.date });
     if (error) { toast.error('Error: ' + error.message); return; }
-    toast.success('Expense add ho gaya');
+    toast.success('Expense added successfully');
     setForm({ category: 'Rent', amount: '', description: '', date: new Date().toISOString().slice(0, 10) });
     setShowForm(false);
     fetchExpenses();
   }
 
   async function deleteExpense(id: string) {
-    if (!confirm('Delete this expense?')) return;
+    if (!confirm('Are you sure you want to delete this expense?')) return;
     await supabase.from('expenses').delete().eq('id', id);
     toast.success('Expense deleted');
     fetchExpenses();
@@ -82,8 +81,8 @@ export default function ExpensesPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Expenses / Kharche</h1>
-          <p className="text-gray-500">Dukaan ke kharche track karo</p></div>
+        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Expenses</h1>
+          <p className="text-gray-500">Track your store expenses</p></div>
         <button onClick={() => setShowForm(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"><Plus size={18}/>Add Expense</button>
       </div>
 
@@ -150,7 +149,7 @@ export default function ExpensesPage() {
               <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Amount (Rs.)</label>
                 <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0" className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/></div>
               <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Description</label>
-                <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional..." className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/></div>
+                <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional description..." className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/></div>
               <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Date</label>
                 <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"/></div>
               <div className="flex gap-3 pt-2">

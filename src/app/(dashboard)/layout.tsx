@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useFestivalStore } from '@/store/festival';
+import { useStoreConfig } from '@/store/storeConfig';
 import { isDevMode } from '@/lib/plugins';
+import { APP_VERSION } from '@/lib/plugins';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, BarChart3,
   Megaphone, Truck, Settings, LogOut, Menu, X, CreditCard,
@@ -31,20 +33,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const supabase = createClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState('');
   const [devMode, setDevMode] = useState(false);
-  const [showDevAccess, setShowDevAccess] = useState(false);
   const { currentFestival, festivalEnabled, theme, darkMode, toggleDarkMode, toggleFestival } = useFestivalStore();
+  const storeConfig = useStoreConfig();
 
   useEffect(() => {
     setDevMode(isDevMode());
-    async function getUser() {
+    storeConfig.loadConfig();
+
+    async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push('/login'); return; }
-      const { data: profile } = await supabase.from('profiles').select('store_name').eq('id', user.id).single();
-      setUserName(profile?.store_name || user.email || 'Store');
+      if (!user) router.push('/login');
     }
-    getUser();
+    checkAuth();
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey && e.shiftKey && e.key === 'D') {
@@ -82,8 +83,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span className="text-2xl">🛒</span>
               )}
               <div>
-                <h1 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{userName}</h1>
-                <p className="text-xs text-gray-500">Smart Grocery Mart</p>
+                <h1 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {storeConfig.storeName}
+                </h1>
+                <p className="text-xs text-gray-500">{storeConfig.storeTagline}</p>
               </div>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={20}/></button>
@@ -140,13 +143,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <div className={`px-4 py-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <p className="text-[10px] text-gray-400 text-center">Developed by <span className="font-semibold text-blue-500">Mian Fahad</span></p>
-          <p className="text-[10px] text-gray-400 text-center">v2.0.0</p>
+          <p className="text-[10px] text-gray-400 text-center">v{APP_VERSION}</p>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col min-h-screen">
         <header className={`sticky top-0 z-30 px-4 py-3 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} lg:hidden flex items-center justify-between`}>
           <button onClick={() => setSidebarOpen(true)}><Menu size={24} className={darkMode ? 'text-white' : 'text-gray-900'}/></button>
+          <span className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{storeConfig.storeName}</span>
           <button onClick={() => router.push('/dev-panel')} className="opacity-0 w-8 h-8 active:opacity-100" aria-label="dev">
             <Terminal size={14}/>
           </button>
