@@ -108,10 +108,10 @@ export default function ScannerPage() {
     setCart(prev => {
       const existing = prev.find(i => i.product.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stock_quantity) { toast.error('Stock limit!'); return prev; }
+        if (existing.quantity >= product.stock) { toast.error('Stock limit!'); return prev; }
         return prev.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      if (product.stock_quantity <= 0) { toast.error('Out of stock!'); return prev; }
+      if (product.stock <= 0) { toast.error('Out of stock!'); return prev; }
       return [...prev, { product, quantity: 1 }];
     });
   }
@@ -119,12 +119,12 @@ export default function ScannerPage() {
   function updateCartQty(productId: string, qty: number) {
     if (qty <= 0) { setCart(prev => prev.filter(i => i.product.id !== productId)); return; }
     const item = cart.find(i => i.product.id === productId);
-    if (item && qty > item.product.stock_quantity) { toast.error('Stock limit!'); return; }
+    if (item && qty > item.product.stock) { toast.error('Stock limit!'); return; }
     setCart(prev => prev.map(i => i.product.id === productId ? { ...i, quantity: qty } : i));
   }
 
-  const subtotal = cart.reduce((s, i) => s + i.product.selling_price * i.quantity, 0);
-  const profit = cart.reduce((s, i) => s + (i.product.selling_price - i.product.cost_price) * i.quantity, 0);
+  const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const profit = cart.reduce((s, i) => s + (i.product.price - i.product.cost_price) * i.quantity, 0);
 
   async function completeSale() {
     if (cart.length === 0) { toast.error('Cart empty!'); return; }
@@ -140,11 +140,11 @@ export default function ScannerPage() {
     for (const item of cart) {
       await supabase.from('sale_items').insert({
         sale_id: sale.id, product_id: item.product.id, product_name: item.product.name,
-        quantity: item.quantity, unit_price: item.product.selling_price,
-        cost_price: item.product.cost_price, total_price: item.product.selling_price * item.quantity,
-        profit: (item.product.selling_price - item.product.cost_price) * item.quantity
+        quantity: item.quantity, unit_price: item.product.price,
+        cost_price: item.product.cost_price, total_price: item.product.price * item.quantity,
+        profit: (item.product.price - item.product.cost_price) * item.quantity
       });
-      await supabase.from('products').update({ stock_quantity: item.product.stock_quantity - item.quantity }).eq('id', item.product.id);
+      await supabase.from('products').update({ stock: item.product.stock - item.quantity }).eq('id', item.product.id);
     }
     toast.success(`Sale complete! ${invoiceNum}`, { icon: '🎉' });
     setCart([]); setScannedProduct(null); setScanCount(0);
@@ -234,8 +234,8 @@ export default function ScannerPage() {
               <h3 className="font-semibold text-green-800 dark:text-green-400 mb-2 text-sm">Last Scanned</h3>
               <div className="flex justify-between items-center">
                 <div><p className="font-bold text-lg dark:text-white">{scannedProduct.name}</p>
-                  <p className="text-sm text-gray-500">Barcode: {scannedProduct.barcode} | Stock: {scannedProduct.stock_quantity}</p></div>
-                <p className="text-2xl font-bold text-green-600">Rs.{scannedProduct.selling_price}</p>
+                  <p className="text-sm text-gray-500">Barcode: {scannedProduct.barcode} | Stock: {scannedProduct.stock}</p></div>
+                <p className="text-2xl font-bold text-green-600">Rs.{scannedProduct.price}</p>
               </div>
             </div>
           )}
@@ -249,8 +249,8 @@ export default function ScannerPage() {
                 {filteredProducts.slice(0, 10).map(p => (
                   <div key={p.id} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-lg cursor-pointer" onClick={() => { addToCart(p); setScanCount(prev => prev + 1); }}>
                     <div><p className="font-medium dark:text-white">{p.name}</p>
-                      <p className="text-xs text-gray-500">Barcode: {p.barcode || 'N/A'} | Stock: {p.stock_quantity}</p></div>
-                    <div className="text-right"><p className="font-bold text-green-600">Rs.{p.selling_price}</p>
+                      <p className="text-xs text-gray-500">Barcode: {p.barcode || 'N/A'} | Stock: {p.stock}</p></div>
+                    <div className="text-right"><p className="font-bold text-green-600">Rs.{p.price}</p>
                       <button className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded mt-1">+ Add</button></div>
                   </div>))}
               </div>
@@ -268,13 +268,13 @@ export default function ScannerPage() {
                 {cart.map(item => (
                   <div key={item.product.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-750 rounded-lg">
                     <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate dark:text-white">{item.product.name}</p>
-                      <p className="text-xs text-gray-500">Rs.{item.product.selling_price}</p></div>
+                      <p className="text-xs text-gray-500">Rs.{item.product.price}</p></div>
                     <div className="flex items-center gap-1">
                       <button onClick={() => updateCartQty(item.product.id, item.quantity - 1)} className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center"><Minus size={14}/></button>
                       <span className="w-8 text-center text-sm font-bold dark:text-white">{item.quantity}</span>
                       <button onClick={() => updateCartQty(item.product.id, item.quantity + 1)} className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center"><Plus size={14}/></button>
                     </div>
-                    <p className="text-sm font-bold w-20 text-right dark:text-white">Rs.{(item.product.selling_price * item.quantity).toLocaleString()}</p>
+                    <p className="text-sm font-bold w-20 text-right dark:text-white">Rs.{(item.product.price * item.quantity).toLocaleString()}</p>
                     <button onClick={() => setCart(prev => prev.filter(i => i.product.id !== item.product.id))} className="text-red-500 p-1"><X size={16}/></button>
                   </div>))}
               </div>
